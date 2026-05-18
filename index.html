@@ -1100,7 +1100,7 @@
       <div style="display: flex; gap: 8px; flex-wrap: wrap;">
         <button class="btn" onclick="exportData()">⬇ Export JSON</button>
         <button class="btn" onclick="document.getElementById('importFile').click()">⬆ Import JSON</button>
-        <button class="btn" onclick="changePin()">🔒 Change PIN</button>
+        <button class="btn" onclick="changePin()">🔒 Change Password</button>
         <button class="btn btn-danger" onclick="resetData()">⚠ Reset All Data</button>
         <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
       </div>
@@ -1112,11 +1112,26 @@
 <div class="modal-backdrop" id="pinModal">
   <div class="modal">
     <div class="modal-title">Admin Access</div>
-    <p class="modal-subtitle">Enter the admin PIN to manage staff and award merit.</p>
-    <input type="password" class="form-input" id="pinInput" placeholder="••••" inputmode="numeric" autocomplete="off">
+    <p class="modal-subtitle">Enter the admin password to manage staff and award merit.</p>
+    <input type="password" class="form-input" id="pinInput" placeholder="Enter password" autocomplete="off">
     <div class="modal-actions">
       <button class="btn" onclick="closePinModal()">Cancel</button>
       <button class="btn btn-primary" onclick="submitPin()">Unlock</button>
+    </div>
+  </div>
+</div>
+
+<!-- CHANGE PIN MODAL -->
+<div class="modal-backdrop" id="changePinModal">
+  <div class="modal">
+    <div class="modal-title">🔒 Change PIN</div>
+    <p class="modal-subtitle">Enter your current password, then set a new one.</p>
+    <input type="password" class="form-input" id="changePinCurrent" placeholder="Current password" autocomplete="current-password" style="margin-bottom:10px;">
+    <input type="password" class="form-input" id="changePinNew" placeholder="New password (min 3 chars)" autocomplete="new-password" style="margin-bottom:10px;">
+    <input type="password" class="form-input" id="changePinConfirm" placeholder="Confirm new password" autocomplete="new-password">
+    <div class="modal-actions">
+      <button class="btn" onclick="closeChangePinModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitChangePin()">Update PIN</button>
     </div>
   </div>
 </div>
@@ -1732,13 +1747,28 @@ function submitPin() {
   }
 }
 
-async function changePin() {
-  const current = prompt('Current PIN:');
+function changePin() {
+  document.getElementById('changePinCurrent').value = '';
+  document.getElementById('changePinNew').value = '';
+  document.getElementById('changePinConfirm').value = '';
+  document.getElementById('changePinModal').classList.add('active');
+  setTimeout(() => document.getElementById('changePinCurrent').focus(), 100);
+}
+
+function closeChangePinModal() {
+  document.getElementById('changePinModal').classList.remove('active');
+}
+
+async function submitChangePin() {
+  const current = document.getElementById('changePinCurrent').value;
+  const next = document.getElementById('changePinNew').value;
+  const confirm = document.getElementById('changePinConfirm').value;
   if (current !== state.pin) return toast('Wrong current PIN', true);
-  const next = prompt('New PIN (min 3 chars):');
-  if (!next || next.length < 3) return toast('PIN too short', true);
+  if (!next || next.length < 3) return toast('PIN too short (min 3 chars)', true);
+  if (next !== confirm) return toast('New PINs do not match', true);
   try {
     await setDoc(doc(db, 'settings', 'config'), { pin: next });
+    closeChangePinModal();
     toast('PIN updated');
   } catch (e) {
     console.error(e);
@@ -1853,10 +1883,19 @@ document.getElementById('staffModal').addEventListener('click', e => {
   if (e.target.id === 'staffModal') closeStaffModal();
 });
 
+document.getElementById('changePinModal').addEventListener('click', e => {
+  if (e.target.id === 'changePinModal') closeChangePinModal();
+});
+
+document.getElementById('changePinConfirm').addEventListener('keydown', e => {
+  if (e.key === 'Enter') submitChangePin();
+});
+
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     closePinModal();
     closeStaffModal();
+    closeChangePinModal();
   }
 });
 
@@ -1868,6 +1907,8 @@ window.addStaff = addStaff;
 window.removeStaff = removeStaff;
 window.submitAward = submitAward;
 window.changePin = changePin;
+window.closeChangePinModal = closeChangePinModal;
+window.submitChangePin = submitChangePin;
 window.exportData = exportData;
 window.importData = importData;
 window.resetData = resetData;
