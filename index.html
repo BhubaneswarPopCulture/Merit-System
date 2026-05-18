@@ -1158,8 +1158,33 @@
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
-<script>
-// ============ STATE ============
+<script type="module">
+// ============ FIREBASE SETUP ============
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js';
+import {
+  getFirestore,
+  collection,
+  doc,
+  setDoc,
+  deleteDoc,
+  onSnapshot,
+  getDocs,
+  writeBatch
+} from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyANl1O3_rgoXd7b2PrA3SO1o1pJAmu-FMg",
+  authDomain: "bbsrpopcult-merit-system.firebaseapp.com",
+  projectId: "bbsrpopcult-merit-system",
+  storageBucket: "bbsrpopcult-merit-system.firebasestorage.app",
+  messagingSenderId: "285324200392",
+  appId: "1:285324200392:web:a64cb32f67f07c9a2118fd"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// ============ CONSTANTS ============
 const DEFAULT_CATEGORIES = [
   { id: 'cat_event', icon: '🎤', name: 'Event Hosted', points: 50 },
   { id: 'cat_content', icon: '🎨', name: 'Content Created', points: 30 },
@@ -1174,143 +1199,19 @@ const AVATAR_COLORS = [
   '#a78bfa', '#fb923c', '#f472b6', '#34d399'
 ];
 
+// ============ STATE ============
 let state = {
   staff: [],
-  categories: [],
+  categories: DEFAULT_CATEGORIES,
   log: [],
   pin: '2026',
   isAdmin: false,
   activeTab: 'leaderboard',
-  filter: 'all',
-  selectedCategoryId: null
+  filter: 'all'
 };
 
-let lastKnownUpdate = 0;
-let pollHandle = null;
-const POLL_INTERVAL_MS = 2000;
-
-// ============ STORAGE ============
-async function loadAll() {
-  try {
-    const [staffR, catR, logR, pinR, updR] = await Promise.all([
-      window.storage.get('bpc:staff', true).catch(() => null),
-      window.storage.get('bpc:categories', true).catch(() => null),
-      window.storage.get('bpc:log', true).catch(() => null),
-      window.storage.get('bpc:pin', true).catch(() => null),
-      window.storage.get('bpc:lastUpdated', true).catch(() => null)
-    ]);
-    state.staff = staffR ? JSON.parse(staffR.value) : [];
-    state.categories = catR ? JSON.parse(catR.value) : DEFAULT_CATEGORIES;
-    state.log = logR ? JSON.parse(logR.value) : [];
-    state.pin = pinR ? JSON.parse(pinR.value) : '2026';
-    if (updR) lastKnownUpdate = JSON.parse(updR.value);
-    if (!catR) await saveCategories();
-    if (!pinR) await savePin();
-  } catch (e) {
-    console.error('Load error:', e);
-    state.categories = DEFAULT_CATEGORIES;
-  }
-}
-
-async function touchUpdate() {
-  try {
-    const ts = Date.now();
-    lastKnownUpdate = ts;
-    await window.storage.set('bpc:lastUpdated', JSON.stringify(ts), true);
-  } catch (e) { /* silent */ }
-}
-
-async function saveStaff() {
-  try {
-    await window.storage.set('bpc:staff', JSON.stringify(state.staff), true);
-    await touchUpdate();
-  } catch (e) { toast('Save failed', true); }
-}
-async function saveCategories() {
-  try {
-    await window.storage.set('bpc:categories', JSON.stringify(state.categories), true);
-    await touchUpdate();
-  } catch (e) { toast('Save failed', true); }
-}
-async function saveLog() {
-  try {
-    await window.storage.set('bpc:log', JSON.stringify(state.log), true);
-    await touchUpdate();
-  } catch (e) { toast('Save failed', true); }
-}
-async function savePin() {
-  try {
-    await window.storage.set('bpc:pin', JSON.stringify(state.pin), true);
-    await touchUpdate();
-  } catch (e) { toast('Save failed', true); }
-}
-
-// ============ REAL-TIME POLLING ============
-async function pollForUpdates() {
-  if (document.hidden) return;
-  try {
-    const r = await window.storage.get('bpc:lastUpdated', true).catch(() => null);
-    if (!r) {
-      setLiveStatus('live');
-      return;
-    }
-    const remote = JSON.parse(r.value);
-    if (remote > lastKnownUpdate) {
-      lastKnownUpdate = remote;
-      // Pull fresh data
-      const [staffR, catR, logR, pinR] = await Promise.all([
-        window.storage.get('bpc:staff', true).catch(() => null),
-        window.storage.get('bpc:categories', true).catch(() => null),
-        window.storage.get('bpc:log', true).catch(() => null),
-        window.storage.get('bpc:pin', true).catch(() => null)
-      ]);
-      state.staff = staffR ? JSON.parse(staffR.value) : [];
-      state.categories = catR ? JSON.parse(catR.value) : DEFAULT_CATEGORIES;
-      state.log = logR ? JSON.parse(logR.value) : [];
-      state.pin = pinR ? JSON.parse(pinR.value) : state.pin;
-      render();
-      // If the staff history modal is open, refresh its content too
-      if (currentModalStaffId && document.getElementById('staffModal').classList.contains('active')) {
-        showStaffHistory(currentModalStaffId);
-      }
-      setLiveStatus('flash');
-    } else {
-      setLiveStatus('live');
-    }
-  } catch (e) {
-    setLiveStatus('stale');
-  }
-}
-
-function startPolling() {
-  if (pollHandle) return;
-  pollHandle = setInterval(pollForUpdates, POLL_INTERVAL_MS);
-  setLiveStatus('live');
-}
-
-function stopPolling() {
-  if (pollHandle) {
-    clearInterval(pollHandle);
-    pollHandle = null;
-  }
-  setLiveStatus('stale');
-}
-
-function setLiveStatus(status) {
-  const el = document.getElementById('liveIndicator');
-  if (!el) return;
-  if (status === 'flash') {
-    el.classList.add('flash');
-    el.classList.remove('stale');
-    setTimeout(() => el.classList.remove('flash'), 600);
-  } else if (status === 'stale') {
-    el.classList.add('stale');
-    el.classList.remove('flash');
-  } else {
-    el.classList.remove('stale');
-    el.classList.remove('flash');
-  }
-}
+let currentModalStaffId = null;
+let hasInitiallyLoaded = false;
 
 // ============ UTILITIES ============
 function uid(prefix = 'id') {
@@ -1336,17 +1237,9 @@ function timeAgo(ts) {
   return new Date(ts).toLocaleDateString();
 }
 
-function filterTimestamp(filter) {
-  const now = Date.now();
-  if (filter === 'week') return now - 7 * 24 * 3600 * 1000;
-  if (filter === 'month') return now - 30 * 24 * 3600 * 1000;
-  return 0;
-}
-
-function calculatePoints(staffId, filter = 'all') {
-  const since = filterTimestamp(filter);
+function calculatePoints(staffId) {
   return state.log
-    .filter(e => e.staffId === staffId && e.timestamp >= since)
+    .filter(e => e.staffId === staffId)
     .reduce((sum, e) => sum + e.points, 0);
 }
 
@@ -1355,6 +1248,27 @@ function toast(msg, isError = false) {
   t.textContent = msg;
   t.className = 'toast show' + (isError ? ' error' : '');
   setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+function escapeHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+}
+
+function setLiveStatus(status) {
+  const el = document.getElementById('liveIndicator');
+  if (!el) return;
+  if (status === 'flash') {
+    el.classList.add('flash');
+    el.classList.remove('stale');
+    setTimeout(() => el.classList.remove('flash'), 600);
+  } else if (status === 'stale') {
+    el.classList.add('stale');
+    el.classList.remove('flash');
+  } else {
+    el.classList.remove('stale');
+    el.classList.remove('flash');
+  }
 }
 
 // ============ RENDERING ============
@@ -1367,7 +1281,7 @@ function render() {
 
 function renderLeaderboard() {
   const ranked = state.staff
-    .map(s => ({ ...s, points: calculatePoints(s.id, state.filter) }))
+    .map(s => ({ ...s, points: calculatePoints(s.id) }))
     .sort((a, b) => b.points - a.points);
 
   const podiumEl = document.getElementById('podium-container');
@@ -1384,7 +1298,6 @@ function renderLeaderboard() {
     return;
   }
 
-  // Podium for top 3
   const top3 = ranked.slice(0, 3);
   podiumEl.innerHTML = top3.length >= 1 ? `
     <div class="podium">
@@ -1394,7 +1307,6 @@ function renderLeaderboard() {
     </div>
   ` : '';
 
-  // Full list — only clickable in admin mode (history is admin-only)
   listEl.innerHTML = ranked.map((s, i) => {
     const clickable = state.isAdmin;
     const rowAttrs = clickable
@@ -1449,7 +1361,6 @@ function renderActivity() {
     return;
   }
 
-  // Decide which staff to show — sorted by total points descending
   const staffToShow = (currentFilter === 'all'
     ? state.staff
     : state.staff.filter(s => s.id === currentFilter)
@@ -1539,9 +1450,59 @@ function renderManagePanel() {
     }).join('');
 }
 
-function escapeHtml(s) {
-  if (!s) return '';
-  return String(s).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+// ============ FIRESTORE REAL-TIME LISTENERS ============
+function setupListeners() {
+  // Staff collection
+  onSnapshot(collection(db, 'staff'),
+    (snap) => {
+      state.staff = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (!hasInitiallyLoaded) hasInitiallyLoaded = true;
+      render();
+      setLiveStatus('flash');
+      // Refresh open modal if relevant
+      if (currentModalStaffId && document.getElementById('staffModal').classList.contains('active')) {
+        showStaffHistory(currentModalStaffId);
+      }
+    },
+    (err) => {
+      console.error('Staff listener error:', err);
+      setLiveStatus('stale');
+      toast('Connection error — check console', true);
+    }
+  );
+
+  // Merit log collection
+  onSnapshot(collection(db, 'merit_log'),
+    (snap) => {
+      state.log = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      render();
+      setLiveStatus('flash');
+      if (currentModalStaffId && document.getElementById('staffModal').classList.contains('active')) {
+        showStaffHistory(currentModalStaffId);
+      }
+    },
+    (err) => {
+      console.error('Log listener error:', err);
+      setLiveStatus('stale');
+    }
+  );
+
+  // Settings doc (PIN)
+  onSnapshot(doc(db, 'settings', 'config'),
+    async (snap) => {
+      if (snap.exists()) {
+        state.pin = snap.data().pin || '2026';
+      } else {
+        // First-run seed
+        try {
+          await setDoc(doc(db, 'settings', 'config'), { pin: '2026' });
+        } catch (e) { console.error('PIN seed failed:', e); }
+      }
+    },
+    (err) => {
+      console.error('Settings listener error:', err);
+    }
+  );
 }
 
 // ============ ACTIONS ============
@@ -1550,54 +1511,39 @@ async function addStaff() {
   const roleEl = document.getElementById('newStaffRole');
   const name = nameEl.value.trim();
   if (!name) return toast('Name required', true);
-  const newStaff = { id: uid('staff'), name, role: roleEl.value.trim() || 'Staff', joinedAt: Date.now() };
-  state.staff.push(newStaff);
-  // Seed starting merit of 100
-  state.log.push({
-    id: uid('log'),
-    staffId: newStaff.id,
-    categoryId: '_initial',
-    points: 100,
-    note: 'Initial merit allocation on joining BPC staff.',
-    awardedBy: 'System',
-    timestamp: Date.now()
-  });
-  await Promise.all([saveStaff(), saveLog()]);
-  nameEl.value = ''; roleEl.value = '';
-  render();
-  toast('Staff added with 100 starting merit');
+  const role = roleEl.value.trim() || 'Staff';
+  const id = uid('staff');
+  const now = Date.now();
+  try {
+    await setDoc(doc(db, 'staff', id), { name, role, joinedAt: now });
+    const logId = uid('log');
+    await setDoc(doc(db, 'merit_log', logId), {
+      staffId: id,
+      points: 100,
+      note: 'Initial merit allocation on joining BPC staff.',
+      awardedBy: 'System',
+      categoryId: '_initial',
+      timestamp: now
+    });
+    nameEl.value = '';
+    roleEl.value = '';
+    toast('Staff added with 100 starting merit');
+  } catch (e) {
+    console.error(e);
+    toast('Failed to add staff', true);
+  }
 }
 
 async function removeStaff(id) {
   const s = state.staff.find(x => x.id === id);
   if (!confirm(`Remove ${s?.name}? Their merit log entries will remain but show as "?".`)) return;
-  state.staff = state.staff.filter(x => x.id !== id);
-  await saveStaff();
-  render();
-  toast('Staff removed');
-}
-
-async function addCategory() {
-  const icon = document.getElementById('newCatIcon').value.trim() || '⚡';
-  const name = document.getElementById('newCatName').value.trim();
-  const points = parseInt(document.getElementById('newCatPoints').value, 10);
-  if (!name) return toast('Name required', true);
-  if (isNaN(points)) return toast('Valid points required', true);
-  state.categories.push({ id: uid('cat'), icon, name, points });
-  await saveCategories();
-  document.getElementById('newCatIcon').value = '';
-  document.getElementById('newCatName').value = '';
-  document.getElementById('newCatPoints').value = '';
-  render();
-  toast('Category added');
-}
-
-async function removeCategory(id) {
-  if (!confirm('Remove this category? Past log entries will keep referencing it.')) return;
-  state.categories = state.categories.filter(c => c.id !== id);
-  await saveCategories();
-  render();
-  toast('Category removed');
+  try {
+    await deleteDoc(doc(db, 'staff', id));
+    toast('Staff removed');
+  } catch (e) {
+    console.error(e);
+    toast('Failed to remove staff', true);
+  }
 }
 
 async function submitAward(isDeduct = false) {
@@ -1617,29 +1563,27 @@ async function submitAward(isDeduct = false) {
   if (!note) return toast('Reason is required', true);
   if (note.length < 5) return toast('Reason too short — be specific', true);
 
-  state.log.push({
-    id: uid('log'),
-    staffId,
-    categoryId: '_custom',
-    points,
-    note,
-    awardedBy,
-    timestamp: Date.now()
-  });
-  await saveLog();
-
-  document.getElementById('awardPoints').value = '';
-  document.getElementById('awardNote').value = '';
-
-  render();
-  toast(isDeduct ? `Deducted ${Math.abs(points)} pts` : `Awarded ${points} pts`);
+  const id = uid('log');
+  try {
+    await setDoc(doc(db, 'merit_log', id), {
+      staffId,
+      categoryId: '_custom',
+      points,
+      note,
+      awardedBy,
+      timestamp: Date.now()
+    });
+    document.getElementById('awardPoints').value = '';
+    document.getElementById('awardNote').value = '';
+    toast(isDeduct ? `Deducted ${Math.abs(points)} pts` : `Awarded ${points} pts`);
+  } catch (e) {
+    console.error(e);
+    toast('Failed to save merit', true);
+  }
 }
 
 // ============ STAFF HISTORY MODAL ============
-let currentModalStaffId = null;
-
 function showStaffHistory(staffId) {
-  // History contains reasons and is admin-only
   if (!state.isAdmin) return;
   const staff = state.staff.find(s => s.id === staffId);
   if (!staff) return;
@@ -1719,7 +1663,7 @@ function exportStaffHistory() {
   lines.push(`Exported: ${new Date().toLocaleString()}`);
   lines.push(`Current Merit: ${entries.reduce((s, e) => s + e.points, 0)}`);
   lines.push('');
-  lines.push('=' .repeat(60));
+  lines.push('='.repeat(60));
   lines.push('');
 
   entries.forEach(e => {
@@ -1742,7 +1686,7 @@ function exportStaffHistory() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `bpc-merit-${staff.name.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().slice(0,10)}.txt`;
+  a.download = `bpc-merit-${staff.name.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().slice(0, 10)}.txt`;
   a.click();
   URL.revokeObjectURL(url);
   toast('Record downloaded');
@@ -1755,11 +1699,9 @@ function toggleAdmin() {
     document.body.classList.remove('admin-mode');
     document.getElementById('adminToggle').classList.remove('active');
     document.getElementById('adminToggleLabel').textContent = 'Admin Mode';
-    // If on an admin-only panel, switch to leaderboard
     if (['award', 'manage', 'activity'].includes(state.activeTab)) switchTab('leaderboard');
-    // Close staff history modal if open (contains reasons)
     closeStaffModal();
-    render(); // re-render to strip click handlers from leaderboard rows
+    render();
     toast('Admin mode off');
   } else {
     document.getElementById('pinModal').classList.add('active');
@@ -1780,7 +1722,7 @@ function submitPin() {
     document.getElementById('adminToggle').classList.add('active');
     document.getElementById('adminToggleLabel').textContent = 'Admin: ON';
     closePinModal();
-    render(); // re-render to enable click handlers on leaderboard rows
+    render();
     toast('Admin mode enabled');
   } else {
     toast('Wrong PIN', true);
@@ -1790,27 +1732,30 @@ function submitPin() {
 async function changePin() {
   const current = prompt('Current PIN:');
   if (current !== state.pin) return toast('Wrong current PIN', true);
-  const next = prompt('New PIN (numbers/letters):');
+  const next = prompt('New PIN (min 3 chars):');
   if (!next || next.length < 3) return toast('PIN too short', true);
-  state.pin = next;
-  await savePin();
-  toast('PIN updated');
+  try {
+    await setDoc(doc(db, 'settings', 'config'), { pin: next });
+    toast('PIN updated');
+  } catch (e) {
+    console.error(e);
+    toast('Failed to update PIN', true);
+  }
 }
 
 // ============ DATA EXPORT/IMPORT ============
 function exportData() {
   const data = {
     staff: state.staff,
-    categories: state.categories,
     log: state.log,
     exportedAt: new Date().toISOString(),
-    version: 1
+    version: 2
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `bpc-merit-backup-${new Date().toISOString().slice(0,10)}.json`;
+  a.download = `bpc-merit-backup-${new Date().toISOString().slice(0, 10)}.json`;
   a.click();
   URL.revokeObjectURL(url);
   toast('Backup downloaded');
@@ -1822,31 +1767,65 @@ async function importData(event) {
   try {
     const text = await file.text();
     const data = JSON.parse(text);
-    if (!confirm('Replace ALL current data with this backup?')) return;
-    state.staff = data.staff || [];
-    state.categories = data.categories || DEFAULT_CATEGORIES;
-    state.log = data.log || [];
-    await Promise.all([saveStaff(), saveCategories(), saveLog()]);
-    render();
+    if (!confirm('Replace ALL current data with this backup? This will overwrite the live database.')) {
+      event.target.value = '';
+      return;
+    }
+
+    // Note: Firestore batches are limited to 500 ops. For larger imports, chunking would be needed.
+    const batch = writeBatch(db);
+
+    const staffSnap = await getDocs(collection(db, 'staff'));
+    staffSnap.forEach(d => batch.delete(d.ref));
+    const logSnap = await getDocs(collection(db, 'merit_log'));
+    logSnap.forEach(d => batch.delete(d.ref));
+
+    (data.staff || []).forEach(s => {
+      batch.set(doc(db, 'staff', s.id), {
+        name: s.name,
+        role: s.role || 'Staff',
+        joinedAt: s.joinedAt || Date.now()
+      });
+    });
+    (data.log || []).forEach(e => {
+      batch.set(doc(db, 'merit_log', e.id), {
+        staffId: e.staffId,
+        points: e.points,
+        note: e.note || '',
+        awardedBy: e.awardedBy || 'Imported',
+        categoryId: e.categoryId || '_custom',
+        timestamp: e.timestamp || Date.now()
+      });
+    });
+
+    await batch.commit();
     toast('Import complete');
   } catch (e) {
-    toast('Invalid backup file', true);
+    console.error(e);
+    toast('Import failed', true);
   }
   event.target.value = '';
 }
 
 async function resetData() {
-  if (!confirm('Delete ALL staff, categories, and merit history? This cannot be undone.')) return;
+  if (!confirm('Delete ALL staff and merit history? This cannot be undone.')) return;
   if (!confirm('Are you absolutely sure?')) return;
-  state.staff = [];
-  state.categories = [...DEFAULT_CATEGORIES];
-  state.log = [];
-  await Promise.all([saveStaff(), saveCategories(), saveLog()]);
-  render();
-  toast('All data reset');
+  try {
+    const batch = writeBatch(db);
+    const staffSnap = await getDocs(collection(db, 'staff'));
+    staffSnap.forEach(d => batch.delete(d.ref));
+    const logSnap = await getDocs(collection(db, 'merit_log'));
+    logSnap.forEach(d => batch.delete(d.ref));
+    batch.set(doc(db, 'settings', 'config'), { pin: '2026' });
+    await batch.commit();
+    toast('All data reset');
+  } catch (e) {
+    console.error(e);
+    toast('Reset failed', true);
+  }
 }
 
-// ============ TABS & FILTERS ============
+// ============ TABS & UI EVENT LISTENERS ============
 function switchTab(tab) {
   state.activeTab = tab;
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.panel === tab));
@@ -1878,22 +1857,26 @@ document.addEventListener('keydown', e => {
   }
 });
 
-// Pause polling when tab is hidden, resume on focus
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) {
-    stopPolling();
-  } else {
-    startPolling();
-    pollForUpdates(); // immediate check on refocus
-  }
-});
+// ============ EXPOSE TO WINDOW (for inline onclick handlers) ============
+window.toggleAdmin = toggleAdmin;
+window.closePinModal = closePinModal;
+window.submitPin = submitPin;
+window.addStaff = addStaff;
+window.removeStaff = removeStaff;
+window.submitAward = submitAward;
+window.changePin = changePin;
+window.exportData = exportData;
+window.importData = importData;
+window.resetData = resetData;
+window.showStaffHistory = showStaffHistory;
+window.closeStaffModal = closeStaffModal;
+window.exportStaffHistory = exportStaffHistory;
 
 // ============ INIT ============
-(async function init() {
-  await loadAll();
-  render();
-  startPolling();
-})();
+setLiveStatus('stale'); // dim until first snapshot arrives
+render(); // initial empty render
+setupListeners(); // start real-time sync
+
 </script>
 
 </body>
