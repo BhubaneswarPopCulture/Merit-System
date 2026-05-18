@@ -612,6 +612,167 @@
   }
   .log-points.negative { color: var(--red); }
 
+  /* PER-STAFF ACTIVITY CARDS */
+  .activity-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+
+  .staff-activity-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+
+  .staff-activity-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .staff-activity-header .staff-avatar {
+    width: 44px; height: 44px;
+    font-size: 16px;
+  }
+
+  .staff-activity-identity { flex: 1; min-width: 0; }
+
+  .staff-activity-name {
+    font-family: 'Bungee', sans-serif;
+    font-size: 18px;
+    line-height: 1.1;
+    margin-bottom: 4px;
+  }
+
+  .staff-activity-role {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+  }
+
+  .staff-activity-total {
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .staff-activity-total-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--cyan);
+    line-height: 1;
+  }
+  .staff-activity-total-label {
+    font-size: 9px;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-top: 2px;
+  }
+
+  .staff-activity-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .staff-activity-col {
+    background: var(--surface-2);
+    border-radius: 12px;
+    padding: 14px;
+    border-top: 3px solid var(--green);
+    min-width: 0;
+  }
+  .staff-activity-col.deduct { border-top-color: var(--red); }
+
+  .col-header {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--green);
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .staff-activity-col.deduct .col-header { color: var(--red); }
+
+  .col-count {
+    background: var(--surface-3);
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+
+  .col-entries {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .entry-mini {
+    background: var(--surface);
+    border-radius: 8px;
+    padding: 10px 12px;
+    border-left: 2px solid var(--green);
+  }
+  .staff-activity-col.deduct .entry-mini { border-left-color: var(--red); }
+
+  .entry-mini-text {
+    font-size: 13px;
+    margin-bottom: 6px;
+    line-height: 1.4;
+    color: var(--text);
+    word-wrap: break-word;
+  }
+
+  .entry-mini-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 10px;
+    color: var(--text-faint);
+    font-family: 'JetBrains Mono', monospace;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .entry-mini-pts {
+    color: var(--green);
+    font-weight: 700;
+    font-size: 12px;
+  }
+  .staff-activity-col.deduct .entry-mini-pts { color: var(--red); }
+
+  .col-empty {
+    font-size: 12px;
+    color: var(--text-faint);
+    font-style: italic;
+    padding: 6px 4px;
+    text-align: center;
+  }
+
+  @media (max-width: 640px) {
+    .staff-activity-columns { grid-template-columns: 1fr; gap: 10px; }
+    .staff-activity-card { padding: 14px; }
+    .staff-activity-name { font-size: 15px; }
+    .staff-activity-total-value { font-size: 18px; }
+  }
+
   /* STAFF MANAGE LIST */
   .manage-list { display: flex; flex-direction: column; gap: 8px; }
 
@@ -877,15 +1038,13 @@
 
   <!-- ACTIVITY -->
   <section class="panel" id="panel-activity">
-    <div class="card">
-      <div class="flex-between mb-12">
-        <div class="card-title" style="margin-bottom: 0;">Recent Activity</div>
-        <select class="form-select" id="activityFilter" style="width: auto; max-width: 180px;">
-          <option value="all">All Staff</option>
-        </select>
-      </div>
-      <div id="activityList"></div>
+    <div class="activity-toolbar">
+      <div class="card-title" style="margin-bottom: 0;">Activity by Staff</div>
+      <select class="form-select" id="activityFilter" style="max-width: 220px;">
+        <option value="all">All Staff</option>
+      </select>
     </div>
+    <div id="activityList"></div>
   </section>
 
   <!-- AWARD MERIT (ADMIN) -->
@@ -898,18 +1057,13 @@
         <select class="form-select" id="awardStaff"></select>
       </div>
 
-      <div class="form-group">
-        <label class="form-label">Category</label>
-        <div class="category-grid" id="awardCategoryGrid"></div>
-      </div>
-
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">Points (override)</label>
-          <input type="number" class="form-input" id="awardPoints" placeholder="Use category default">
+          <label class="form-label">Points <span style="color: var(--pink);">*required</span></label>
+          <input type="number" class="form-input" id="awardPoints" placeholder="e.g. 30" min="1">
         </div>
         <div class="form-group">
-          <label class="form-label">Awarded By</label>
+          <label class="form-label">Awarded By <span style="color: var(--pink);">*required</span></label>
           <input type="text" class="form-input" id="awardedBy" placeholder="Your name">
         </div>
       </div>
@@ -938,23 +1092,6 @@
       </div>
       <button class="btn btn-cyan" onclick="addStaff()" style="margin-top: 12px;">+ Add Staff</button>
       <div class="manage-list" id="manageStaffList" style="margin-top: 20px;"></div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">Merit Categories</div>
-      <div class="form-row">
-        <div class="form-group" style="margin-bottom: 0;">
-          <input type="text" class="form-input" id="newCatIcon" placeholder="Icon (emoji)" maxlength="2">
-        </div>
-        <div class="form-group" style="margin-bottom: 0;">
-          <input type="text" class="form-input" id="newCatName" placeholder="Category name">
-        </div>
-      </div>
-      <div class="form-group" style="margin-top: 12px; margin-bottom: 0;">
-        <input type="number" class="form-input" id="newCatPoints" placeholder="Points value">
-      </div>
-      <button class="btn btn-cyan" onclick="addCategory()" style="margin-top: 12px;">+ Add Category</button>
-      <div class="manage-list" id="manageCategoryList" style="margin-top: 20px;"></div>
     </div>
 
     <div class="card">
@@ -1300,43 +1437,76 @@ function renderActivity() {
     state.staff.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
   filterSelect.value = currentFilter;
 
-  const filtered = currentFilter === 'all'
-    ? state.log
-    : state.log.filter(e => e.staffId === currentFilter);
-
-  const sorted = [...filtered].sort((a, b) => b.timestamp - a.timestamp).slice(0, 100);
-
   const listEl = document.getElementById('activityList');
-  if (sorted.length === 0) {
+
+  if (state.staff.length === 0) {
     listEl.innerHTML = `
       <div class="empty">
         <div class="empty-icon">📭</div>
-        <div class="empty-title">Nothing Yet</div>
-        <div class="empty-text">Awards will show up here as they happen.</div>
+        <div class="empty-title">No Staff Yet</div>
+        <div class="empty-text">Add staff in the Manage tab to start tracking activity.</div>
       </div>`;
     return;
   }
 
-  listEl.innerHTML = sorted.map(e => {
-    const staff = state.staff.find(s => s.id === e.staffId);
-    const cat = state.categories.find(c => c.id === e.categoryId);
-    const isInitial = e.categoryId === '_initial';
-    const icon = isInitial ? '🎉' : (cat ? cat.icon : '⚡');
-    const catName = isInitial ? 'Joined BPC' : (cat ? cat.name : 'Custom');
-    const verb = e.points < 0 ? 'lost merit for' : 'earned merit for';
-    const sign = e.points >= 0 ? '+' : '';
+  // Decide which staff to show — sorted by total points descending
+  const staffToShow = (currentFilter === 'all'
+    ? state.staff
+    : state.staff.filter(s => s.id === currentFilter)
+  ).slice().sort((a, b) => calculatePoints(b.id) - calculatePoints(a.id));
+
+  listEl.innerHTML = staffToShow.map(staff => {
+    const entries = state.log.filter(e => e.staffId === staff.id);
+    const awards = entries.filter(e => e.points >= 0).sort((a, b) => b.timestamp - a.timestamp);
+    const deducts = entries.filter(e => e.points < 0).sort((a, b) => b.timestamp - a.timestamp);
+    const total = entries.reduce((sum, e) => sum + e.points, 0);
+
+    const renderCol = (list, isDeduct) => {
+      if (list.length === 0) {
+        return `<div class="col-empty">${isDeduct ? 'No deductions.' : 'No awards yet.'}</div>`;
+      }
+      return list.map(e => {
+        const sign = e.points >= 0 ? '+' : '';
+        return `
+          <div class="entry-mini">
+            <div class="entry-mini-text">${escapeHtml(e.note || '—')}</div>
+            <div class="entry-mini-meta">
+              <span class="entry-mini-pts">${sign}${e.points}</span>
+              <span>${timeAgo(e.timestamp)} · by ${escapeHtml(e.awardedBy || 'Admin')}</span>
+            </div>
+          </div>`;
+      }).join('');
+    };
+
     return `
-      <div class="log-entry">
-        <div class="log-icon">${icon}</div>
-        <div class="log-body">
-          <div class="log-text">
-            <strong>${staff ? escapeHtml(staff.name) : '?'}</strong> ${verb}
-            <em>${escapeHtml(catName)}</em>
+      <div class="staff-activity-card">
+        <div class="staff-activity-header">
+          <div class="staff-avatar" style="background: ${colorForId(staff.id)};">${initials(staff.name)}</div>
+          <div class="staff-activity-identity">
+            <div class="staff-activity-name">${escapeHtml(staff.name)}</div>
+            <div class="staff-activity-role">${escapeHtml(staff.role || 'Staff')}</div>
           </div>
-          <div class="log-meta">${timeAgo(e.timestamp)} · by ${escapeHtml(e.awardedBy || 'Admin')}</div>
-          ${e.note ? `<div class="log-note">${escapeHtml(e.note)}</div>` : ''}
+          <div class="staff-activity-total">
+            <div class="staff-activity-total-value">${total}</div>
+            <div class="staff-activity-total-label">Total Merit</div>
+          </div>
         </div>
-        <div class="log-points ${e.points < 0 ? 'negative' : ''}">${sign}${e.points}</div>
+        <div class="staff-activity-columns">
+          <div class="staff-activity-col award">
+            <div class="col-header">
+              <span>⚡ Award Reasons</span>
+              <span class="col-count">${awards.length}</span>
+            </div>
+            <div class="col-entries">${renderCol(awards, false)}</div>
+          </div>
+          <div class="staff-activity-col deduct">
+            <div class="col-header">
+              <span>⬇ Deducted Reasons</span>
+              <span class="col-count">${deducts.length}</span>
+            </div>
+            <div class="col-entries">${renderCol(deducts, true)}</div>
+          </div>
+        </div>
       </div>`;
   }).join('');
 }
@@ -1348,22 +1518,6 @@ function renderAwardPanel() {
     ? '<option value="">No staff yet — add one in Manage</option>'
     : state.staff.map(s => `<option value="${s.id}">${escapeHtml(s.name)} — ${escapeHtml(s.role || 'Staff')}</option>`).join('');
   if (prev && state.staff.find(s => s.id === prev)) staffSel.value = prev;
-
-  const gridEl = document.getElementById('awardCategoryGrid');
-  gridEl.innerHTML = state.categories.map(c => `
-    <div class="category-chip ${state.selectedCategoryId === c.id ? 'selected' : ''}" data-cat="${c.id}">
-      <div class="category-icon">${c.icon}</div>
-      <div class="category-name">${escapeHtml(c.name)}</div>
-      <div class="category-points">+${c.points}</div>
-    </div>
-  `).join('');
-
-  gridEl.querySelectorAll('.category-chip').forEach(el => {
-    el.onclick = () => {
-      state.selectedCategoryId = el.dataset.cat;
-      renderAwardPanel();
-    };
-  });
 }
 
 function renderManagePanel() {
@@ -1383,16 +1537,6 @@ function renderManagePanel() {
           <button class="btn btn-small btn-danger" onclick="removeStaff('${s.id}')">Remove</button>
         </div>`;
     }).join('');
-
-  const catEl = document.getElementById('manageCategoryList');
-  catEl.innerHTML = state.categories.map(c => `
-    <div class="manage-row">
-      <div class="log-icon">${c.icon}</div>
-      <div class="manage-row-body">
-        <div class="manage-row-name">${escapeHtml(c.name)} <span class="badge pink">+${c.points}</span></div>
-      </div>
-      <button class="btn btn-small btn-danger" onclick="removeCategory('${c.id}')">Remove</button>
-    </div>`).join('');
 }
 
 function escapeHtml(s) {
@@ -1459,13 +1603,12 @@ async function removeCategory(id) {
 async function submitAward(isDeduct = false) {
   const staffId = document.getElementById('awardStaff').value;
   if (!staffId) return toast('Pick a staff member', true);
-  if (!state.selectedCategoryId) return toast('Pick a category', true);
 
-  const cat = state.categories.find(c => c.id === state.selectedCategoryId);
-  const override = document.getElementById('awardPoints').value.trim();
-  let points = override ? parseInt(override, 10) : cat.points;
-  if (isNaN(points)) return toast('Invalid points', true);
-  if (isDeduct) points = -Math.abs(points);
+  const pointsRaw = document.getElementById('awardPoints').value.trim();
+  if (!pointsRaw) return toast('Enter a points value', true);
+  let points = parseInt(pointsRaw, 10);
+  if (isNaN(points) || points === 0) return toast('Enter a valid points number', true);
+  points = isDeduct ? -Math.abs(points) : Math.abs(points);
 
   const awardedBy = document.getElementById('awardedBy').value.trim();
   if (!awardedBy) return toast('Enter your name in "Awarded By"', true);
@@ -1477,7 +1620,7 @@ async function submitAward(isDeduct = false) {
   state.log.push({
     id: uid('log'),
     staffId,
-    categoryId: state.selectedCategoryId,
+    categoryId: '_custom',
     points,
     note,
     awardedBy,
@@ -1487,7 +1630,6 @@ async function submitAward(isDeduct = false) {
 
   document.getElementById('awardPoints').value = '';
   document.getElementById('awardNote').value = '';
-  state.selectedCategoryId = null;
 
   render();
   toast(isDeduct ? `Deducted ${Math.abs(points)} pts` : `Awarded ${points} pts`);
@@ -1526,19 +1668,25 @@ function showStaffHistory(staffId) {
     bodyEl.innerHTML = entries.map(e => {
       const cat = state.categories.find(c => c.id === e.categoryId);
       const isInitial = e.categoryId === '_initial';
-      const icon = isInitial ? '🎉' : (cat ? cat.icon : '⚡');
-      const catName = isInitial ? 'Joined BPC' : (cat ? cat.name : 'Custom');
+      const isCustom = !isInitial && (!cat || e.categoryId === '_custom');
+      const icon = isInitial ? '🎉' : (isCustom ? (e.points < 0 ? '⬇️' : '⚡') : cat.icon);
       const sign = e.points >= 0 ? '+' : '';
       const dateStr = new Date(e.timestamp).toLocaleString('en-IN', {
         day: 'numeric', month: 'short', year: 'numeric',
         hour: '2-digit', minute: '2-digit'
       });
+
+      let title;
+      if (isInitial) title = 'Joined BPC';
+      else if (isCustom) title = (e.points < 0 ? 'Merit deducted' : 'Merit awarded');
+      else title = cat.name;
+
       return `
         <div class="log-entry">
           <div class="log-icon">${icon}</div>
           <div class="log-body">
             <div class="log-text">
-              <em>${escapeHtml(catName)}</em>
+              <em>${escapeHtml(title)}</em>
             </div>
             <div class="log-meta">${escapeHtml(dateStr)} · by ${escapeHtml(e.awardedBy || 'Admin')}</div>
             ${e.note ? `<div class="log-note">${escapeHtml(e.note)}</div>` : ''}
@@ -1577,10 +1725,14 @@ function exportStaffHistory() {
   entries.forEach(e => {
     const cat = state.categories.find(c => c.id === e.categoryId);
     const isInitial = e.categoryId === '_initial';
-    const catName = isInitial ? 'Joined BPC' : (cat ? cat.name : 'Custom');
+    const isCustom = !isInitial && (!cat || e.categoryId === '_custom');
+    let title;
+    if (isInitial) title = 'Joined BPC';
+    else if (isCustom) title = (e.points < 0 ? 'Merit deducted' : 'Merit awarded');
+    else title = cat.name;
     const sign = e.points >= 0 ? '+' : '';
     const date = new Date(e.timestamp).toLocaleString();
-    lines.push(`[${date}]  ${sign}${e.points} pts  —  ${catName}`);
+    lines.push(`[${date}]  ${sign}${e.points} pts  —  ${title}`);
     lines.push(`  By: ${e.awardedBy || 'Admin'}`);
     if (e.note) lines.push(`  Reason: ${e.note}`);
     lines.push('');
