@@ -1513,11 +1513,14 @@ async function addStaff() {
   if (!name) return toast('Name required', true);
   const role = roleEl.value.trim() || 'Staff';
   const id = uid('staff');
+  const logId = uid('log');
   const now = Date.now();
   try {
-    await setDoc(doc(db, 'staff', id), { name, role, joinedAt: now });
-    const logId = uid('log');
-    await setDoc(doc(db, 'merit_log', logId), {
+    // Atomic batch: staff doc + initial +100 log entry commit together.
+    // Prevents the leaderboard from briefly showing the new member at 0 pts.
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'staff', id), { name, role, joinedAt: now });
+    batch.set(doc(db, 'merit_log', logId), {
       staffId: id,
       points: 100,
       note: 'Initial merit allocation on joining BPC staff.',
@@ -1525,6 +1528,7 @@ async function addStaff() {
       categoryId: '_initial',
       timestamp: now
     });
+    await batch.commit();
     nameEl.value = '';
     roleEl.value = '';
     toast('Staff added with 100 starting merit');
